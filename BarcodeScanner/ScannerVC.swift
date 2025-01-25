@@ -14,8 +14,8 @@ protocol ScannerVCDelegate: AnyObject {
 }
 
 enum CameraError: String{
-    case invalidDevice          = "Could not find a valid video capture device."
-    case invalidScannedValue    = "Scanned value is invalid. Scanner only supports UPC and barcode."
+    case invalidDevice  
+    case invalidScannedValue
 }
 
 final class ScannerVC: UIViewController {
@@ -31,6 +31,21 @@ final class ScannerVC: UIViewController {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupCaptureSession()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        guard let previewLayer = previewLayer else {
+            scannerVCDelegate?.didFail(with: .invalidDevice)
+            return
+        }
+        previewLayer.frame = view.layer.bounds
     }
     
     private func setupCaptureSession(){
@@ -69,7 +84,9 @@ final class ScannerVC: UIViewController {
         previewLayer?.videoGravity = .resizeAspectFill
         view.layer.addSublayer(previewLayer!)
         
-        captureSession.startRunning()
+        DispatchQueue.global(qos: .background).async {
+            self.captureSession.startRunning()
+        }
     }
 }
 
@@ -91,7 +108,7 @@ extension ScannerVC: AVCaptureMetadataOutputObjectsDelegate {
             scannerVCDelegate?.didFail(with: .invalidScannedValue)
             return
         }
-
+        captureSession.stopRunning()
         scannerVCDelegate?.didFind(barcode: barcode)
     }
 }
